@@ -20,6 +20,9 @@ io.on('connection', (socket) => {
 	socket.on('chat', (msg) => {
 		io.emit('chat', msg);
 	});
+	socket.on('clear', (data) => {
+		io.emit('clear', data);
+	});
 });
 
 http.listen(8080, function(){

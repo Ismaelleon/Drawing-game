@@ -42,6 +42,7 @@
 			background: rgb(0, 0, 0, 0.1);
 			padding: 5px;
 			border-radius: 5px;
+			overflow: hidden;
 		}
 
 		.chat p {
@@ -51,8 +52,9 @@
 		}
 
 		.chat ul {
-			max-height: 200px;
 			background: #FFF;
+			overflow-y: scroll;
+			max-height: 200px;
 		}
 
 		.chat ul li {
@@ -75,9 +77,50 @@
 		.chat input {
 			border: rgb(200, 200, 200) solid 3px;
 		}
+
+		.color {
+			position: absolute;
+			bottom: 10px;
+			right: 10px;
+			border: none;
+			width: 30px;
+			height: 30px;
+			border-radius: 50%;
+			padding: 0;
+		}
+
+		.contact {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+		}
+
+		.goma {
+			position: absolute;
+			right: 15px;
+			bottom: 50px;
+			background: violet;
+			width: 20px;
+			height: 30px;
+			border-radius: 5px;
+			transform: rotate(25deg);
+			cursor: pointer;
+		}
+
+		.pincel {
+			position: absolute;
+			right: 15px;
+			bottom: 100px;
+			background: #000;
+			width: 10px;
+			height: 30px;
+			transform: rotate(-25deg);
+			cursor: pointer;
+		}
 	</style>
 </head>
 <body>
+	<p class="contact">Creado por <a target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/profile.php?id=100006745332937">Ismael León</a></p>
 	<div class="chat">
 		<p>Chat</p>
 		<ul>
@@ -87,6 +130,9 @@
 	</div>
 	<canvas id="canvas">Tu navegador no soporta canvas</canvas>
 	<input type="range" min="5" max="15" class="radius" />
+	<span class="pincel"></span>
+	<span class="goma"></span>
+	<input type="color" class="color" />
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
 	<!-- Javascript del chat -->
 	<script>
@@ -98,7 +144,6 @@
 		});
 
 		document.querySelector('.chat input').addEventListener('keydown', (e) => {
-			console.log(e.keyCode);
 			if(e.keyCode == 13) {	
 				socket.emit('chat', document.querySelector('.chat input').value);
 				document.querySelector('.chat input').value = '';
@@ -107,6 +152,12 @@
 
 		socket.on('chat', (msg) => {
 			document.querySelector('.chat ul').innerHTML += `<li>${msg}</li>`;
+			if(document.querySelector('.chat ul').clientHeight < 200) {
+				document.querySelector('.chat ul').scrollTop = document.querySelector('.chat ul').clientHeight;
+			} else {
+				document.querySelector('.chat ul').scrollTop = document.querySelector('.chat ul').clientHeight + 200	;
+			}
+			console.log(document.querySelector('.chat ul').clientHeight);
 		});
 	</script>
 	<!-- Javascript del canvas -->
@@ -118,16 +169,21 @@
 			var ctx = canvas.getContext('2d');
 			var socket = io();
 
-			var mouseX = 0;
-			var mouseY = 0;
-			var drawing = false;
-			var radius = 5;
-			var data = [mouseX, mouseY, radius], zoom = 0;
+			var mouseX = 0, mouseY = 0, drawing = false, radius = 5, color = '#000', mode = 'pincel';
+			var data = [mouseX, mouseY, radius, color, mode];
 
 			document.querySelector('.radius').addEventListener('mouseup', () => {
-				radius = document.querySelector('input').value;
+				radius = document.querySelector('.radius').value;
 				radius = parseInt(radius);
 			});
+
+			document.querySelector('.goma').addEventListener('click', () => {
+				mode = 'goma';
+			});
+
+			document.querySelector('.pincel').addEventListener('click', () => {
+				mode = 'pincel';
+			})
 
 			canvas.addEventListener('mousedown', (e) => {
 				drawing = true;
@@ -136,8 +192,10 @@
 			window.addEventListener('mousemove', (e) => {
 				mouseX = e.offsetX;
 				mouseY = e.offsetY;
-				if(drawing) {
+				if(drawing && mode == 'pincel') {
 					socket.emit('draw', data);
+				} else if(drawing && mode == 'goma') {
+					socket.emit('clear', data);
 				}
 			})
 
@@ -145,24 +203,42 @@
 				drawing = false;
 			})
 
+			document.querySelector('.color').addEventListener('input', () => {
+				color = document.querySelector('.color').value;
+			});
 
-			function draw(mx, my, r) {
+			function draw(mx, my, r, color) {
 				ctx.beginPath();
 				ctx.arc(mx, my, r, 0, 7);
 				ctx.fillStyle = '#000';
+				ctx.fillStyle = color;
+				ctx.fill();
+				ctx.closePath();
+			}
+
+			function clear(x, y, radius) {
+				ctx.beginPath();
+				ctx.arc(x, y, radius, 0, 7);
+				ctx.fillStyle = '#FFF';
 				ctx.fill();
 				ctx.closePath();
 			}
 			
 			socket.on('draw', (data) => {
-				draw(data[0], data[1], data[2]);
+				draw(data[0], data[1], data[2], data[3], data[4]);
 			});
+
+			socket.on('clear', (data) => {
+				clear(data[0], data[1], data[2]);
+			})
 
 			function update() {
 				requestAnimationFrame(update);
-				data = [mouseX, mouseY, radius];
-				if(drawing) {
-					draw(mouseX, mouseY, radius);
+				data = [mouseX, mouseY, radius, color, mode];
+				if(drawing == true && mode == 'pincel') {
+					draw(mouseX, mouseY, radius, color);
+				} else if(drawing == true && mode == 'goma') {
+					clear(mouseX, mouseY, radius);
 				}
 			}
 
