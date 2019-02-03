@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+	<title>Juego Dibujar</title>
+	<style>
+		@import url('https://fonts.googleapis.com/css?family=Raleway');
+
+		* {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+		}
+
+		body {
+			font-family: 'Raleway';
+		}
+
+		canvas:hover {
+			cursor: cell;
+		}
+
+		.radius {
+			position: absolute;
+			top: 10px;
+			right: 10px;
+			font-size: 24px;
+		}
+
+		.zoom {
+			position: absolute;
+			top: 30px;
+			right: 10px;
+		}
+
+		.chat {
+			position: absolute;
+			top: 100px;
+			right: 10px;
+			width: 200px;
+			background: rgb(0, 0, 0, 0.1);
+			padding: 5px;
+			border-radius: 5px;
+		}
+
+		.chat p {
+			background: #bbdefb;
+			padding: 5px;
+			border-radius: 5px;
+		}
+
+		.chat ul {
+			max-height: 200px;
+			background: #FFF;
+		}
+
+		.chat ul li {
+			padding: 2px 4px;
+			border-bottom: rgb(50, 50, 50) solid 1px;
+		}
+
+		.chat input, button {
+			font-size: 13px;
+			border-radius: 3px;
+		}
+
+		.chat button {
+			background: blue;
+			color: #FFF;
+			padding: 2px;
+			border: none;
+		}
+
+		.chat input {
+			border: rgb(200, 200, 200) solid 3px;
+		}
+	</style>
+</head>
+<body>
+	<div class="chat">
+		<p>Chat</p>
+		<ul>
+		</ul>
+		<input type="text" />
+		<button class="send">Enviar</button>
+	</div>
+	<canvas id="canvas">Tu navegador no soporta canvas</canvas>
+	<input type="range" min="5" max="15" class="radius" />
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+	<!-- Javascript del chat -->
+	<script>
+		var socket = io();
+
+		document.querySelector('.send').addEventListener('click', () => {
+			socket.emit('chat', document.querySelector('.chat input').value);
+			document.querySelector('.chat input').value = '';
+		});
+
+		document.querySelector('.chat input').addEventListener('keydown', (e) => {
+			console.log(e.keyCode);
+			if(e.keyCode == 13) {	
+				socket.emit('chat', document.querySelector('.chat input').value);
+				document.querySelector('.chat input').value = '';
+			}
+		})
+
+		socket.on('chat', (msg) => {
+			document.querySelector('.chat ul').innerHTML += `<li>${msg}</li>`;
+		});
+	</script>
+	<!-- Javascript del canvas -->
+	<script>
+		window.onload = function() {
+			var canvas = document.getElementById('canvas');
+			canvas.width = window.innerWidth;
+			canvas.height = window.innerHeight;
+			var ctx = canvas.getContext('2d');
+			var socket = io();
+
+			var mouseX = 0;
+			var mouseY = 0;
+			var drawing = false;
+			var radius = 5;
+			var data = [mouseX, mouseY, radius], zoom = 0;
+
+			document.querySelector('.radius').addEventListener('mouseup', () => {
+				radius = document.querySelector('input').value;
+				radius = parseInt(radius);
+			});
+
+			canvas.addEventListener('mousedown', (e) => {
+				drawing = true;
+			})
+
+			window.addEventListener('mousemove', (e) => {
+				mouseX = e.offsetX;
+				mouseY = e.offsetY;
+				if(drawing) {
+					socket.emit('draw', data);
+				}
+			})
+
+			canvas.addEventListener('mouseup', () => {
+				drawing = false;
+			})
+
+
+			function draw(mx, my, r) {
+				ctx.beginPath();
+				ctx.arc(mx, my, r, 0, 7);
+				ctx.fillStyle = '#000';
+				ctx.fill();
+				ctx.closePath();
+			}
+			
+			socket.on('draw', (data) => {
+				draw(data[0], data[1], data[2]);
+			});
+
+			function update() {
+				requestAnimationFrame(update);
+				data = [mouseX, mouseY, radius];
+				if(drawing) {
+					draw(mouseX, mouseY, radius);
+				}
+			}
+
+			update();
+		}
+	</script>
+</body>
+</html>
