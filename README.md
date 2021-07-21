@@ -28,7 +28,7 @@ A web game made with HTML5 and Socket.io. You can draw with your friends in real
 
 * [Node.js](https://nodejs.org)
 * [Express.js](https://expressjs.com)
-* [React](https://reactjs.com)
+* [Socket.io](https://socket.io)
 
 <!-- GETTING STARTED -->
 ## Getting Started
